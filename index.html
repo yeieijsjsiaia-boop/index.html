@@ -3,58 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Y Gyi Social Pro</title>
+    <title>Y Gyi Social Chat</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --tg-blue: #2481cc; --tg-bg: #f4f4f4; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--tg-bg); }
         .hidden { display: none !important; }
         
-        /* Auth Page */
-        #auth-page { max-width: 400px; margin: 80px auto; padding: 30px; background: white; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 12px; background: var(--tg-blue); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-
-        /* Main App */
-        #app-main { display: flex; height: 100vh; }
-        #sidebar { width: 320px; background: white; border-right: 1px solid #eee; display: flex; flex-direction: column; }
-        #chat-area { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
+        #auth-container { max-width: 400px; margin: 100px auto; padding: 25px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .auth-btn { width: 100%; padding: 12px; background: var(--tg-blue); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
         
-        /* Stories Bar */
-        #stories-bar { display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid #f0f0f0; overflow-x: auto; }
-        .story-circle { width: 55px; height: 55px; border-radius: 50%; border: 2px solid var(--tg-blue); flex-shrink: 0; overflow: hidden; cursor: pointer; }
-        .story-circle img { width: 100%; height: 100%; object-fit: cover; }
+        #app-container { display: flex; height: 100vh; }
+        #sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        #chat-window { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+        .msg { padding: 10px 15px; border-radius: 15px; max-width: 70%; background: white; }
+        .sent { background: #efffde; align-self: flex-end; }
     </style>
 </head>
 <body>
 
-<div id="auth-page">
-    <h2>Welcome</h2>
+<div id="auth-container">
+    <h2 id="auth-title" style="text-align:center;">Login</h2>
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Password">
-    <input type="text" id="user-name" class="hidden" placeholder="Username (For Sign Up)">
-    <button class="btn" id="auth-btn" onclick="handleAuth()">Login</button>
-    <p onclick="toggleAuth()" id="toggle-text" style="color: var(--tg-blue); cursor: pointer; margin-top: 15px;">Don't have an account? Sign Up</p>
+    <div id="username-wrapper" class="hidden">
+        <input type="text" id="username" placeholder="Choose Username">
+    </div>
+    <button class="auth-btn" id="submit-btn" onclick="handleAuth()">Login</button>
+    <p style="text-align:center; cursor:pointer; color:var(--tg-blue); margin-top:15px;" id="toggle-text" onclick="toggleAuth()">Don't have an account? Sign Up</p>
 </div>
 
-<div id="app-main" class="hidden">
+<div id="app-container" class="hidden">
     <div id="sidebar">
-        <div style="padding: 15px; background: var(--tg-blue); color: white;">
-            <span>Y Gyi Social</span>
-            <button onclick="logout()" style="float: right;">Logout</button>
+        <div style="padding:15px; background:var(--tg-blue); color:white; display:flex; justify-content:space-between;">
+            <span id="user-display">Loading...</span>
+            <button onclick="logout()" style="color:white; background:none; border:1px solid white; border-radius:4px; cursor:pointer;">Logout</button>
         </div>
-        <div id="stories-bar">
-            <div class="story-circle" onclick="document.getElementById('st-file').click()" style="display: flex; align-items: center; justify-content: center; background: #eee;">+</div>
-            <input type="file" id="st-file" hidden onchange="uploadStory(this)">
+        <div id="user-search" style="padding:10px;">
+            <input type="text" placeholder="Search users..." onkeyup="searchUsers(this.value)">
+            <div id="search-results"></div>
         </div>
-        <div id="user-list" style="overflow-y: auto; flex: 1;">
-            </div>
     </div>
-    <div id="chat-area">
-        <div id="messages" style="flex: 1; overflow-y: auto; padding: 20px;"></div>
-        <div style="padding: 15px; background: white; display: flex; gap: 10px;">
-            <input type="text" id="m-input" placeholder="Write a message...">
-            <button class="btn" style="width: 60px;" onclick="sendMsg()">🚀</button>
+    <div id="chat-window">
+        <div id="messages"></div>
+        <div style="padding:15px; background:white; display:flex; gap:10px;">
+            <input type="text" id="m-in" placeholder="Message...">
+            <button class="auth-btn" style="width:60px; margin:0;" onclick="sendMsg()">🚀</button>
         </div>
     </div>
 </div>
@@ -64,42 +60,61 @@
     const SUPABASE_KEY = 'sb_publishable_DIGdtGe326V90viVs5OxJg_Twzdq-O0';
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let isSignMode = false;
+    let isSignUp = false;
 
     function toggleAuth() {
-        isSignMode = !isSignMode;
-        document.getElementById('user-name').classList.toggle('hidden', !isSignMode);
-        document.getElementById('auth-btn').innerText = isSignMode ? "Sign Up" : "Login";
-        document.getElementById('toggle-text').innerText = isSignMode ? "Already have an account? Login" : "Don't have an account? Sign Up";
+        isSignUp = !isSignUp;
+        document.getElementById('auth-title').innerText = isSignUp ? "Sign Up" : "Login";
+        document.getElementById('submit-btn').innerText = isSignUp ? "Sign Up" : "Login";
+        document.getElementById('toggle-text').innerText = isSignUp ? "Already have an account? Login" : "Don't have an account? Sign Up";
+        document.getElementById('username-wrapper').classList.toggle('hidden', !isSignUp);
     }
 
     async function handleAuth() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        const username = document.getElementById('user-name').value;
+        const username = document.getElementById('username').value;
 
-        if (isSignMode) {
-            const { error } = await supabase.auth.signUp({ email, password, options: { data: { username } } });
-            if (error) alert(error.message); else alert("Check your email!");
+        if (isSignUp) {
+            if(!username) return alert("Please enter a username");
+            const { data, error } = await supabase.auth.signUp({ 
+                email, 
+                password, 
+                options: { data: { username: username } } 
+            });
+            if (error) alert("Sign up error: " + error.message);
+            else alert("Sign up success! Please check your email or login.");
         } else {
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) alert(error.message); else showApp();
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) alert("Login error: " + error.message);
+            else checkUser();
         }
     }
 
-    async function showApp() {
+    async function checkUser() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-            document.getElementById('auth-page').classList.add('hidden');
-            document.getElementById('app-main').classList.remove('hidden');
+            document.getElementById('auth-container').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('user-display').innerText = user.user_metadata.username || user.email;
         }
     }
 
     async function logout() { await supabase.auth.signOut(); location.reload(); }
 
-    // အက်ပ်ဖွင့်လျှင် အကောင့်ဝင်ထားသလား စစ်ဆေးခြင်း
-    supabase.auth.onAuthStateChange((event, session) => { if (session) showApp(); });
+    async function sendMsg() {
+        const content = document.getElementById('m-in').value;
+        if (!content) return;
+        await supabase.from('messages').insert([{ content, type: 'text' }]);
+        document.getElementById('m-in').value = '';
+    }
+
+    // Auth status change ကို နားထောင်ခြင်း
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (session) checkUser();
+    });
+
+    checkUser(); // ပထမဆုံးအကြိမ် ဝင်ထားသလား စစ်ခြင်း
 </script>
 </body>
 </html>
-
